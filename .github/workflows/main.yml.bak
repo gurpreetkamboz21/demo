@@ -1,0 +1,65 @@
+name: Build, Test and Deploy PreRelease
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-test-bump-version:
+
+    runs-on: self-hosted
+
+    steps:
+    - uses: actions/checkout@v2  
+
+    - name: add nuget github source
+      run: |
+          dotnet nuget remove source github > null
+          dotnet nuget add source --username ${{ secrets.REGISTRY_USER }} --password ${{ secrets.REGISTRY_TOKEN_READ }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/joer-corticare/index.json" > null
+          dotnet nuget list source > nugets.txt
+
+    - name: Restore
+      run: |
+        dotnet nuget list source > nugets.txt
+        dotnet restore .\LogSystem.Blazor.Client
+        dotnet restore .\LogSystem
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Test
+      run: dotnet test --configuration Release --no-restore --verbosity normal
+
+    - name: Publish Client
+      run: dotnet publish .\LogSystem.Blazor.Client --configuration Release --output published-client
+
+    - name: Publish Api
+      run: dotnet publish .\LogSystem --configuration Release --output published-api
+
+    - name: Bump Version and Push Tag
+      id: bump_version      
+      uses:  mathieudutour/github-tag-action@v5.1
+      with:
+        release_branches: stable
+        pre_release_branches : master
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        append_to_pre_release_tag: beta
+
+    - name: pack Client
+      run: octo pack --id LogSystem.Client --version ${{ steps.bump_version.outputs.new_version }} --basePath published-client
+
+    - name: Pack Api
+      run: octo pack --id LogSystem.Api --version ${{ steps.bump_version.outputs.new_version }}  --basePath published-api
+
+    - name: Push Client
+      run: octo push --package .\LogSystem.Client.${{ steps.bump_version.outputs.new_version }}.nupkg
+
+    - name: Push Api
+      run: octo push --package .\LogSystem.Api.${{ steps.bump_version.outputs.new_version }}.nupkg
+
+    - name: Release and Deploy Api
+      run: octo create-release --deployto QA --project LogSystem.Api --version ${{ steps.bump_version.outputs.new_version }} --package LogSystem.Api:${{ steps.bump_version.outputs.new_version }} --progress
+
+    - name: Release and Deploy Client
+      run: octo create-release --deployto QA --project LogSystem.Client --version ${{ steps.bump_version.outputs.new_version }} --package LogSystem.Client:${{ steps.bump_version.outputs.new_version }} --progress
