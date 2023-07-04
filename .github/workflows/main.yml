@@ -16,9 +16,6 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
-    - name: Publish Demo
-      run: dotnet publish .\DemoApp --configuration Release --output published-demo
-
     - name: Bump Version and Push Tag
       id: bump_version      
       uses:  mathieudutour/github-tag-action@v5.1
