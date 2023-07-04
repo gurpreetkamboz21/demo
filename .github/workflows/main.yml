@@ -16,7 +16,7 @@ jobs:
     - name: Build
       run: dotnet build --configuration Release --no-restore
 
-   - name: Publish Demo
+    - name: Publish Demo
       run: dotnet publish .\DemoApp --configuration Release --output published-demo
 
     - name: Bump Version and Push Tag
@@ -31,6 +31,6 @@ jobs:
     - name: Use the version
         run: |
           echo ${{ steps.bump_version.outputs.version }}
-      - name: Use the previous version
+    - name: Use the previous version
         run: |
           echo ${{ steps.bump_version.outputs.previous-version }}
