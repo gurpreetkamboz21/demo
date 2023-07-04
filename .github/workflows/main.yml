@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-test-bump-version:
+  lint:
 
     runs-on: ubuntu-latest
 
